@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>TikTok Spam Agent</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 0; padding: 16px; background: #fafafa; color: #18181b; font-size: 14px; }
+    h1 { font-size: 18px; margin: 0 0 8px; }
+    h2 { font-size: 14px; margin: 12px 0 6px; }
+    .row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    button { padding: 6px 12px; border-radius: 6px; border: 1px solid #d4d4d8; background: white; cursor: pointer; font-size: 13px; }
+    button:hover { background: #f4f4f5; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button.primary { background: #18181b; color: white; border-color: #18181b; }
+    button.danger { background: #dc2626; color: white; border-color: #dc2626; }
+    .status { padding: 8px 12px; border-radius: 6px; background: #f4f4f5; margin-bottom: 12px; font-family: ui-monospace, monospace; font-size: 12px; }
+    .tabs { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .tab { padding: 8px 12px; border-radius: 6px; background: white; border: 1px solid #e4e4e7; cursor: pointer; transition: all .15s; }
+    .tab:hover { border-color: #a1a1aa; }
+    .tab.selected { border-color: #18181b; border-width: 2px; padding: 7px 11px; background: #fafafa; }
+    .tab .url { color: #71717a; font-size: 12px; word-break: break-all; }
+    .tab .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-left: 6px; }
+    .badge.running { background: #dcfce7; color: #166534; }
+    .badge.idle { background: #f4f4f5; color: #52525b; }
+    textarea { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #d4d4d8; font-family: ui-monospace, monospace; font-size: 13px; min-height: 80px; resize: vertical; }
+    label { display: block; font-size: 12px; color: #52525b; margin-bottom: 4px; }
+    .field { display: flex; flex-direction: column; min-width: 80px; }
+    input[type="number"] { padding: 6px 10px; border-radius: 6px; border: 1px solid #d4d4d8; font-size: 13px; width: 100%; }
+    .stats { padding: 10px 12px; border-radius: 6px; background: #18181b; color: #fafafa; font-family: ui-monospace, monospace; font-size: 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; }
+    .stats .k { color: #a1a1aa; }
+    .stats .v { color: #fafafa; font-weight: 600; }
+    .log { background: #18181b; color: #d4d4d8; padding: 8px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 11px; max-height: 160px; overflow-y: auto; margin-top: 12px; white-space: pre-wrap; }
+    .log .err { color: #fca5a5; }
+    .log .warn { color: #fcd34d; }
+    .log .ok { color: #86efac; }
+    .panel { padding: 12px; border-radius: 8px; background: white; border: 1px solid #e4e4e7; margin-bottom: 12px; }
+    .empty { color: #71717a; font-size: 13px; padding: 12px; text-align: center; border: 1px dashed #d4d4d8; border-radius: 6px; }
+    .running-state { font-size: 11px; padding: 2px 8px; border-radius: 12px; background: #fef3c7; color: #92400e; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <h1>TikTok Spam Agent</h1>
+  <div class="status" id="status">Đang tải...</div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">1. Chọn tab TikTok</h2>
+    <div class="row" style="margin-bottom:8px">
+      <button onclick="window.agent.scan()">↻ Quét lại</button>
+      <button onclick="window.agent.startChrome()">Mở Chrome debug</button>
+    </div>
+    <div class="tabs" id="tabs">
+<div class="empty">Chưa có tab video TikTok nào. Mở <b>tiktok.com/.../video/...</b> trong Chrome rồi bấm Quét lại.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">2. Cấu hình spam</h2>
+    <label>Templates — mỗi dòng 1 comment, sẽ xoay vòng</label>
+    <textarea id="templates" placeholder="chắc k có ai để ý
+cả nhà ơi xem nè
+video hay quá">chắc k có ai để ý
+cả nhà ơi xem nè
+video hay quá</textarea>
+
+    <div class="row" style="margin-top:12px">
+      <div class="field">
+        <label>Dwell (giây trên mỗi video)</label>
+        <input type="number" id="dwell" value="5" min="1" max="60">
+      </div>
+      <div class="field">
+        <label>Cooldown (giây giữa các comment)</label>
+        <input type="number" id="cooldown" value="6" min="1" max="120">
+      </div>
+      <div class="field">
+        <label>Max comments (0 = vô hạn)</label>
+        <input type="number" id="maxComments" value="10" min="0">
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">3. Chạy</h2>
+    <div class="row">
+      <div class="field" style="min-width:160px">
+        <label>Mỗi ... giây scroll xuống video tiếp</label>
+        <input type="number" id="browseInterval" value="5" min="2" max="60">
+      </div>
+      <button id="btn-browse-start" class="primary" onclick="startBrowse()" disabled>▶ Lướt</button>
+      <button id="btn-browse-stop" class="danger" onclick="stopBrowse()" disabled>■ Dừng lướt</button>
+    </div>
+
+    <h3 style="margin:16px 0 4px; font-size:13px">💬 Spam comment + auto scroll</h3>
+    <div class="stats" id="stats" style="display:none">
+      <div><span class="k">Trạng thái:</span> <span class="v" id="s-running"></span></div>
+      <div><span class="k">Đã gửi:</span> <span class="v" id="s-sent">0</span></div>
+      <div><span class="k">Lỗi:</span> <span class="v" id="s-failed">0</span></div>
+      <div><span class="k">Comment cuối:</span> <span class="v" id="s-last"></span></div>
+      <div><span class="k">Lỗi cuối:</span> <span class="v" id="s-lasterr"></span></div>
+    </div>
+    <div class="row">
+      <button id="btn-start" class="primary" onclick="startSpam()" disabled>▶ Start (1 tab)</button>
+      <button id="btn-stop" class="danger" onclick="stopSpam()" disabled>■ Stop</button>
+      <button id="btn-spam-all" class="primary" onclick="spamAll()" disabled style="background:#0ea5e9;border-color:#0ea5e9">▶▶ Spam All (tất cả tab)</button>
+      <button id="btn-stop-all" class="danger" onclick="stopAll()">■ Stop All</button>
+    </div>
+  </div>
+
+  <h2>Log:</h2>
+  <div class="log" id="log"></div>
+
+  <script>
+    const $ = (id) => document.getElementById(id)
+    const fmt = (t) => new Date(t).toLocaleTimeString()
+    let selectedTabUid = null
+
+    function renderTabs(tabs) {
+      const c = $('tabs')
+      if (tabs.length === 0) {
+        c.innerHTML = '<div class="empty">Chưa có tab video TikTok nào. Mở <b>tiktok.com/.../video/...</b> trong Chrome rồi bấm Quét lại.</div>'
+        selectedTabUid = null
+        $('btn-start').disabled = true
+        $('btn-browse-start').disabled = true
+        return
+      }
+      c.innerHTML = tabs.map(t => `
+        <div class="tab ${t.uid === selectedTabUid ? 'selected' : ''}" data-uid="${t.uid}">
+          <div><b>${escapeHtml(t.title || '(no title)')}</b></div>
+          <div class="url">${escapeHtml(t.url)}</div>
+        </div>
+      `).join('')
+      if (selectedTabUid && !tabs.find(t => t.uid === selectedTabUid)) selectedTabUid = null
+      if (!selectedTabUid && tabs.length > 0) selectedTabUid = tabs[0].uid
+      $('btn-start').disabled = !selectedTabUid
+      $('btn-spam-all').disabled = !selectedTabUid
+      $('btn-browse-start').disabled = !selectedTabUid
+      c.querySelectorAll('.tab').forEach(el => {
+        el.onclick = () => {
+          selectedTabUid = el.dataset.uid
+          renderTabs(tabs)
+        }
+      })
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]))
+    }
+
+    async function startBrowse() {
+      if (!selectedTabUid) return alert('Chọn 1 tab TikTok trước')
+      const sec = Number($('browseInterval').value) || 5
+      const r = await window.agent.browseStart({ tabUid: selectedTabUid, intervalSec: sec })
+      if (!r.ok) alert('Lỗi: ' + r.error)
+      $('btn-browse-start').disabled = true
+      $('btn-browse-stop').disabled = false
+    }
+
+    async function stopBrowse() {
+      if (!selectedTabUid) return
+      await window.agent.browseStop({ tabUid: selectedTabUid })
+      $('btn-browse-start').disabled = false
+      $('btn-browse-stop').disabled = true
+    }
+
+    async function startSpam() {
+      if (!selectedTabUid) return alert('Chọn 1 tab TikTok trước')
+      const templates = $('templates').value.split('\n').map(s => s.trim()).filter(Boolean)
+      if (templates.length === 0) return alert('Nhập ít nhất 1 comment')
+      const settings = {
+        templates,
+        dwell_s: Number($('dwell').value) || 5,
+        cooldown_s: Number($('cooldown').value) || 6,
+        max_comments: Number($('maxComments').value) || 0,
+        scroll_after_each: true,
+      }
+      const r = await window.agent.spamStart({ tabUid: selectedTabUid, settings })
+      if (!r.ok) alert('Lỗi: ' + r.error)
+      $('btn-start').disabled = true
+      $('btn-stop').disabled = false
+    }
+
+    async function stopSpam() {
+      if (!selectedTabUid) return
+      await window.agent.spamStop({ tabUid: selectedTabUid })
+      $('btn-start').disabled = false
+      $('btn-stop').disabled = true
+    }
+
+    function renderStats(state) {
+      if (!state) { $('stats').style.display = 'none'; return }
+      $('stats').style.display = 'grid'
+      $('s-running').innerHTML = state.is_running
+        ? '<span class="running-state">ĐANG CHẠY</span>'
+        : '<span class="running-state" style="background:#e4e4e7;color:#52525b">ĐÃ DỪNG</span>'
+      $('s-sent').textContent = state.comments_sent ?? 0
+      $('s-failed').textContent = state.comments_failed ?? 0
+      $('s-last').textContent = state.last_comment ? state.last_comment.slice(0, 40) : '—'
+      $('s-lasterr').textContent = state.last_error || '—'
+    }
+
+    async function stopAll() {
+      await window.agent.stopAll()
+      $('btn-start').disabled = !selectedTabUid
+      $('btn-spam-all').disabled = !selectedTabUid
+      $('btn-stop').disabled = true
+      $('btn-browse-start').disabled = !selectedTabUid
+      $('btn-browse-stop').disabled = true
+    }
+
+    async function spamAll() {
+      const templates = $('templates').value.split('\n').map(s => s.trim()).filter(Boolean)
+      if (templates.length === 0) return alert('Nhập ít nhất 1 comment')
+      const settings = {
+        templates,
+        dwell_s: Number($('dwell').value) || 5,
+        cooldown_s: Number($('cooldown').value) || 6,
+        max_comments: Number($('maxComments').value) || 0,
+        scroll_after_each: true,
+      }
+      const r = await window.agent.spamAll(settings)
+      if (!r.ok) return alert('Lỗi: ' + r.error)
+      $('btn-start').disabled = true
+      $('btn-spam-all').disabled = true
+      $('btn-stop-all').disabled = false
+    }
+
+    // Track browse loop state via log events
+    let lastBrowseLogAt = 0
+    let browseActive = false
+    window.agent.onLog(({ msg, ts }) => {
+      if (msg.includes('Browse started on')) { browseActive = true; lastBrowseLogAt = ts }
+      if (msg.includes('Browse stopped on')) { browseActive = false }
+    })
+    setInterval(() => {
+      if (browseActive && Date.now() - lastBrowseLogAt > 30000) browseActive = false
+      if (browseActive) {
+        $('btn-browse-start').disabled = true
+        $('btn-browse-stop').disabled = false
+      } else {
+        $('btn-browse-start').disabled = !selectedTabUid
+      }
+    }, 2000)
+
+    window.agent.onLog(({ level, msg, ts }) => {
+      const line = document.createElement('div')
+      line.className = level === 'error' ? 'err' : level === 'warn' ? 'warn' : 'ok'
+      line.textContent = `[${fmt(ts)}] ${level.toUpperCase()}  ${msg}`
+      $('log').prepend(line)
+    })
+    window.agent.onTabs((tabs) => renderTabs(tabs))
+
+    function refresh() {
+      window.agent.getState().then(state => {
+        $('status').textContent = state.agentId
+          ? `Connected • ${state.tabs.length} tab(s)`
+          : 'Chưa đăng ký với backend'
+        renderTabs(state.tabs)
+        // sync spam loop buttons
+        const spamStates = state.spamStates || {}
+        const running = Object.values(spamStates).some(s => s.is_running)
+        if (running) {
+          $('btn-start').disabled = true
+          $('btn-stop').disabled = false
+          const live = Object.entries(spamStates).find(([_, s]) => s.is_running)
+          if (live) renderStats({ tabUid: live[0], ...live[1] })
+        } else {
+          $('btn-start').disabled = !selectedTabUid
+      $('btn-spam-all').disabled = !selectedTabUid
+          $('btn-stop').disabled = true
+        }
+        if (!browseActive) {
+          $('btn-browse-start').disabled = !selectedTabUid
+        }
+      })
+    }
+    refresh()
+    setInterval(refresh, 1500)
+  </script>
+</body>
+</html>

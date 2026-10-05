@@ -1,0 +1,40 @@
+{
+  "name": "tiktok-spam-agent",
+  "version": "0.1.0",
+  "description": "Local agent that controls Chrome to spam TikTok comments via the TikTok Spam Tool backend.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:mac": "electron-builder --mac --arm64 --x64",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "author": "sminh",
+  "license": "MIT",
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.2",
+    "ws": "7.4.6"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "vn.sminh.tiktok-spam-agent",
+    "productName": "TikTok Spam Agent",
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
