@@ -17,26 +17,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-modules-mac-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-mac-
+          node-version: '22'
 
       - name: Install npm deps
-        run: |
-          if [ ! -d node_modules ]; then
-            npm install --no-audit --no-fund
-          fi
+        run: npm install --no-audit --no-fund
 
       - name: Build macOS
-        run: npm run build:mac
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:mac
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -53,27 +42,15 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Cache node_modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: node-modules-win-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            node-modules-win-
+          node-version: '22'
 
       - name: Install npm deps
-        shell: bash
-        run: |
-          if [ ! -d node_modules ]; then
-            npm install --no-audit --no-fund
-          fi
+        run: npm install --no-audit --no-fund
 
       - name: Build Windows
-        run: npm run build:win
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: npm run build:win
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -81,17 +58,3 @@ jobs:
           name: tiktok-spam-agent-windows
           path: dist/*.exe
           if-no-files-found: error
-
-  release:
-    needs: [build-mac, build-windows]
-    if: startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/**/*.dmg artifacts/**/*.exe
-          generate_release_notes: true
