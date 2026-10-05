@@ -9,69 +9,58 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        include:
-          - os: macos-latest
-            artifact: tiktok-spam-agent-macos
-          - os: windows-latest
-            artifact: tiktok-spam-agent-windows
-          - os: ubuntu-latest
-            artifact: tiktok-spam-agent-linux
-
+  build-mac:
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-
-      - name: Install Linux deps
-        if: matrix.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 \
-            libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxrandr2 \
-            libgbm1 libxss1 libasound2
-
       - name: Install npm deps
         run: npm install --no-audit --no-fund
-
       - name: Build macOS
-        if: matrix.os == 'macos-latest'
         run: npm run build:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Build Windows
-        if: matrix.os == 'windows-latest'
-        run: npm run build:win
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Build Linux
-        if: matrix.os == 'ubuntu-latest'
-        run: npm run build:linux
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: agent-app/dist/*
+          name: tiktok-spam-agent-macos
+          path: dist/*.dmg
           if-no-files-found: error
 
-      - name: Create release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install npm deps
+        run: npm install --no-audit --no-fund
+      - name: Build Windows
+        run: npm run build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-spam-agent-windows
+          path: dist/*.exe
+          if-no-files-found: error
+
+  release:
+    needs: [build-mac, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-              agent-app/dist/*.dmg
-              agent-app/dist/*.exe
-              agent-app/dist/*.AppImage
-              agent-app/dist/*.zip
+          files: artifacts/**/*.dmg artifacts/**/*.exe
           generate_release_notes: true
