@@ -20,7 +20,7 @@ jobs:
           node-version: '22'
 
       - name: Install npm deps
-        run: npm install --no-audit --no-fund
+        run: npm install --include=dev --no-audit --no-fund
 
       - name: Build macOS
         env:
@@ -45,7 +45,7 @@ jobs:
           node-version: '22'
 
       - name: Install npm deps
-        run: npm install --no-audit --no-fund
+        run: npm install --include=dev --no-audit --no-fund
 
       - name: Build Windows
         env:
