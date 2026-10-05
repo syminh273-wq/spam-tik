@@ -11,18 +11,33 @@ on:
 jobs:
   build-mac:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-mac-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-mac-
+
       - name: Install npm deps
-        run: npm install --no-audit --no-fund
+        run: |
+          if [ ! -d node_modules ]; then
+            npm install --no-audit --no-fund
+          fi
+
       - name: Build macOS
         run: npm run build:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -32,18 +47,34 @@ jobs:
 
   build-windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-win-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            node-modules-win-
+
       - name: Install npm deps
-        run: npm install --no-audit --no-fund
+        shell: bash
+        run: |
+          if [ ! -d node_modules ]; then
+            npm install --no-audit --no-fund
+          fi
+
       - name: Build Windows
         run: npm run build:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
